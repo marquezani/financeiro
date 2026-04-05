@@ -32,34 +32,7 @@
       </button>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div
-        class="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex items-center justify-between"
-      >
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-sm font-medium text-gray-500">Total do Mês</span>
-            <button
-              @click="openEditTotal"
-              class="text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
-              title="Editar Valor Total"
-            >
-              <i class="ph-bold ph-pencil-simple text-sm"></i>
-            </button>
-          </div>
-          <h2 class="text-2xl font-bold text-gray-900">
-            {{ formatarMoeda(totalMes) }}
-          </h2>
-        </div>
-        <div
-          class="h-12 w-12 rounded-full bg-gray-50 flex items-center justify-center"
-        >
-          <div class="p-3 bg-slate-100 rounded-full text-slate-500 flex">
-            <i class="ph-bold ph-wallet text-xl"></i>
-          </div>
-        </div>
-      </div>
-
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
       <div
         class="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex items-center justify-between"
       >
@@ -408,88 +381,6 @@
         </div>
       </div>
     </div>
-
-    <div
-      v-if="isEditTotalModalOpen"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
-    >
-      <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-[420px] flex flex-col"
-        @click.stop
-      >
-        <div
-          class="px-6 py-5 flex items-center justify-between border-b border-slate-50"
-        >
-          <div class="flex items-center gap-2">
-            <i class="ph-bold ph-wallet text-[#6366f1] text-xl"></i>
-            <h3 class="text-base font-bold text-[#0f172a]">
-              Editar Total do Mês
-            </h3>
-          </div>
-          <button
-            @click="isEditTotalModalOpen = false"
-            class="text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <i class="ph ph-x text-lg"></i>
-          </button>
-        </div>
-
-        <div class="p-6">
-          <p class="text-[14px] text-slate-600 mb-1 leading-relaxed">
-            Defina um valor fixo para o mês de
-            <strong class="text-slate-800 font-bold">{{ mesAtivoNome }}</strong
-            >.
-          </p>
-          <p class="text-[14px] text-slate-500 mb-6">
-            Remova para calcular o total automaticamente.
-          </p>
-
-          <div>
-            <label
-              class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-            >
-              Valor Fixo (R$)
-            </label>
-            <div class="relative flex items-center">
-              <span class="absolute left-3 text-slate-400 text-sm font-medium"
-                >R$</span
-              >
-              <input
-                v-model="novoValorFixo"
-                type="number"
-                step="0.01"
-                placeholder="0,00"
-                class="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div class="px-6 py-4 flex items-center justify-between pb-6">
-          <button
-            @click="removerValorFixo"
-            class="text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors"
-          >
-            Remover Fixo
-          </button>
-
-          <div class="flex items-center gap-3">
-            <button
-              @click="isEditTotalModalOpen = false"
-              class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              @click="salvarValorFixo"
-              class="px-6 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm"
-            >
-              Salvar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -501,7 +392,6 @@ import {
   excluirDespesa,
   criarDespesa,
   atualizarStatusDespesa,
-  atualizarValorFixoMes,
   atualizarOrdensDespesas,
 } from "../services/FinanceiroService.js";
 
@@ -513,9 +403,7 @@ export default {
       isLoading: false,
       loadingMessage: "Carregando...",
       isModalOpen: false,
-      isEditTotalModalOpen: false,
       mesAtivo: null,
-      novoValorFixo: null,
       meses: [],
       despesas: [],
       dragSourceIndex: null,
@@ -536,16 +424,6 @@ export default {
 
   // 2. COMPUTED: Substitui o "computed(() => {})". Usado para cálculos automáticos.
   computed: {
-    totalMes() {
-      const mes = this.meses.find((m) => m.id === this.mesAtivo);
-      if (mes && mes.valor_fixo !== null && mes.valor_fixo !== undefined) {
-        return Number(mes.valor_fixo);
-      }
-      return this.despesas.reduce(
-        (acc, curr) => acc + Number(curr.valor || 0),
-        0,
-      );
-    },
     totalPago() {
       return this.despesas
         .filter((item) => item.pago)
@@ -562,10 +440,6 @@ export default {
       }
 
       return pending;
-    },
-    mesAtivoNome() {
-      const mes = this.meses.find((m) => m.id === this.mesAtivo);
-      return mes ? `${mes.nome} - ${mes.ano}` : "Mês atual";
     },
   },
 
@@ -661,76 +535,6 @@ export default {
         item.ordem = index + 1;
       });
       this.despesas = updated;
-    },
-
-    openEditTotal() {
-      const mesAtual = this.meses.find((m) => m.id === this.mesAtivo);
-      this.novoValorFixo = mesAtual ? mesAtual.valor_fixo : null;
-      this.isEditTotalModalOpen = true;
-    },
-
-    async salvarValorFixo() {
-      this.isLoading = true;
-      try {
-        if (!this.mesAtivo) {
-          throw new Error("Nenhum mês ativo selecionado para atualizar.");
-        }
-
-        const valorInput = String(this.novoValorFixo || "")
-          .trim()
-          .replace(",", ".");
-        const valorFixoTratado = valorInput !== "" ? Number(valorInput) : null;
-
-        if (valorInput !== "" && Number.isNaN(valorFixoTratado)) {
-          throw new Error("Valor fixo inválido. Use apenas números.");
-        }
-
-        const mesAtual = this.meses.find((m) => m.id === this.mesAtivo);
-
-        console.log("Componente: salvarValorFixo", {
-          mesAtivo: this.mesAtivo,
-          valorFixoTratado,
-          mesAtual,
-        });
-
-        const mesAtualizado = await atualizarValorFixoMes(
-          this.mesAtivo,
-          valorFixoTratado,
-          {
-            nome: mesAtual?.nome,
-            ano: mesAtual?.ano,
-          },
-        );
-
-        if (!mesAtualizado) {
-          throw new Error(
-            "Não foi possível obter o mês atualizado do banco de dados.",
-          );
-        }
-
-        const mesIndex = this.meses.findIndex((m) => m.id === this.mesAtivo);
-        if (mesIndex !== -1) {
-          this.meses[mesIndex].valor_fixo = mesAtualizado.valor_fixo;
-        }
-
-        await this.carregarMeses();
-
-        this.novoValorFixo = mesAtualizado.valor_fixo;
-        this.isEditTotalModalOpen = false;
-      } catch (error) {
-        console.error("Erro ao salvar valor fixo:", error);
-        alert(
-          "Erro ao atualizar o valor fixo do mês: " +
-            (error.message || error).toString(),
-        );
-      } finally {
-        this.isLoading = false;
-      }
-    },
-
-    async removerValorFixo() {
-      this.novoValorFixo = null;
-      await this.salvarValorFixo();
     },
 
     scrollTabs(direction) {
@@ -897,8 +701,9 @@ export default {
           throw new Error("A despesa não foi criada corretamente.");
         }
 
-        this.mesAtivo = mesIdParaSalvar;
-        await this.carregarDespesas();
+        if (mesIdParaSalvar == this.mesAtivo) {
+          await this.carregarDespesas();
+        }
 
         this.isModalOpen = false;
         this.novaDespesa = {

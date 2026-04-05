@@ -131,6 +131,7 @@
               <th class="py-4 px-6 w-24">Ordem</th>
               <th class="py-4 px-6">Descrição (Pagar)</th>
               <th class="py-4 px-6">Dia</th>
+              <th class="py-4 px-6 text-center">Pagamento</th>
               <th class="py-4 px-6 text-center">Observações</th>
               <th class="py-4 px-6 text-center">Parcelas</th>
               <th class="py-4 px-6 text-center">Cód. Barras</th>
@@ -183,13 +184,28 @@
               </td>
               <td class="py-4 px-6 text-center text-gray-400">
                 <div class="space-y-1">
-                  <div>{{ item.observacoes || "-" }}</div>
                   <div
                     v-if="item.metodo_pagamento"
-                    class="text-[11px] font-semibold text-indigo-600"
+                    class="font-semibold text-slate-700"
                   >
-                    {{ item.metodo_pagamento }}
+                    <div
+                      v-if="item.metodo_pagamento"
+                      class="text-[11px] font-semibold text-indigo-600"
+                    >
+                      {{ item.metodo_pagamento }}
+                    </div>
                   </div>
+                  <div
+                    v-if="item.data_pagamento"
+                    class="text-[11px] text-slate-500"
+                  >
+                    {{ formatarData(item.data_pagamento) }}
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-400">
+                <div class="space-y-1">
+                  <div>{{ item.observacoes || "-" }}</div>
                 </div>
               </td>
               <td class="py-4 px-6 text-center text-gray-400">
@@ -571,7 +587,7 @@ import {
   excluirDespesa,
   criarDespesa,
   atualizarStatusDespesa,
-  atualizarMetodoPagamento,
+  atualizarPagamentoDespesa,
   atualizarOrdensDespesas,
 } from "../services/FinanceiroService.js";
 
@@ -773,6 +789,16 @@ export default {
       }).format(valor);
     },
 
+    formatarData(valor) {
+      if (!valor) return "";
+      const data = new Date(valor);
+      return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(data);
+    },
+
     obterClassesDia(dia, pago) {
       // Se está pago, retorna a cor verde
       if (pago) {
@@ -827,10 +853,14 @@ export default {
         this.isLoading = true;
         this.loadingMessage = "Atualizando status...";
         try {
-          await atualizarStatusDespesa(item.id, false);
-          await atualizarMetodoPagamento(item.id, "");
+          await atualizarPagamentoDespesa(item.id, {
+            pago: false,
+            metodo_pagamento: "",
+            data_pagamento: null,
+          });
           item.pago = false;
           item.metodo_pagamento = "";
+          item.data_pagamento = null;
         } catch (error) {
           console.error("Erro ao alternar status:", error);
           const msg = error.message.includes("fetch")
@@ -860,13 +890,14 @@ export default {
       this.isLoading = true;
       this.loadingMessage = "Salvando pagamento...";
       try {
-        await atualizarStatusDespesa(this.despesaSelecionada.id, true);
-        await atualizarMetodoPagamento(
-          this.despesaSelecionada.id,
-          this.metodoSelecionado,
-        );
+        await atualizarPagamentoDespesa(this.despesaSelecionada.id, {
+          pago: true,
+          metodo_pagamento: this.metodoSelecionado,
+          data_pagamento: new Date().toISOString(),
+        });
         this.despesaSelecionada.pago = true;
         this.despesaSelecionada.metodo_pagamento = this.metodoSelecionado;
+        this.despesaSelecionada.data_pagamento = new Date().toISOString();
       } catch (error) {
         console.error("Erro ao salvar pagamento:", error);
         const msg = error.message.includes("fetch")

@@ -326,7 +326,7 @@
             <div>
               <label
                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-                >Vencimento (Dia)</label
+                >Vencimento (Dia) <span class="text-red-500">*</span></label
               >
               <input
                 v-model.number="novaDespesa.dia"
@@ -335,36 +335,60 @@
                 max="31"
                 required
                 placeholder="Ex: 10"
-                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+                :class="[
+                  'w-full border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-1',
+                  erros.dia
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-slate-200 focus:border-[#6366f1] focus:ring-[#6366f1]',
+                ]"
               />
+              <p v-if="erros.dia" class="text-red-500 text-xs mt-1">
+                {{ erros.dia }}
+              </p>
             </div>
           </div>
 
           <div>
             <label
               class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-              >Nome do aluno</label
+              >Nome do aluno <span class="text-red-500">*</span></label
             >
             <input
               v-model="novaDespesa.descricao"
               type="text"
               placeholder="Ex: João Silva"
-              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+              :class="[
+                'w-full border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-1',
+                erros.descricao
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                  : 'border-slate-200 focus:border-[#6366f1] focus:ring-[#6366f1]',
+              ]"
             />
+            <p v-if="erros.descricao" class="text-red-500 text-xs mt-1">
+              {{ erros.descricao }}
+            </p>
           </div>
 
           <div>
             <label
               class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-              >Valor (R$)</label
+              >Valor (R$) <span class="text-red-500">*</span></label
             >
             <input
               v-model.number="novaDespesa.valor"
               type="number"
               step="0.01"
               placeholder="R$ 0,00"
-              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+              :class="[
+                'w-full border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-1',
+                erros.valor
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                  : 'border-slate-200 focus:border-[#6366f1] focus:ring-[#6366f1]',
+              ]"
             />
+            <p v-if="erros.valor" class="text-red-500 text-xs mt-1">
+              {{ erros.valor }}
+            </p>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -397,18 +421,48 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-2 gap-4">
             <div>
               <label
                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-                >Parcelas</label
+                >Parcela Atual <span class="text-red-500">*</span></label
               >
               <input
-                v-model="novaDespesa.parcelas"
-                type="text"
-                placeholder="Ex: 1/12"
-                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+                v-model.number="novaDespesa.parcela_atual"
+                type="number"
+                min="1"
+                placeholder="Ex: 1"
+                :class="[
+                  'w-full border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-1',
+                  erros.parcela_atual
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-slate-200 focus:border-[#6366f1] focus:ring-[#6366f1]',
+                ]"
               />
+              <p v-if="erros.parcela_atual" class="text-red-500 text-xs mt-1">
+                {{ erros.parcela_atual }}
+              </p>
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
+                >Total de Parcelas <span class="text-red-500">*</span></label
+              >
+              <input
+                v-model.number="novaDespesa.parcela_total"
+                type="number"
+                min="1"
+                placeholder="Ex: 12"
+                :class="[
+                  'w-full border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-1',
+                  erros.parcela_total
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-slate-200 focus:border-[#6366f1] focus:ring-[#6366f1]',
+                ]"
+              />
+              <p v-if="erros.parcela_total" class="text-red-500 text-xs mt-1">
+                {{ erros.parcela_total }}
+              </p>
             </div>
           </div>
 
@@ -641,11 +695,19 @@ export default {
         descricao: "",
         dia: null,
         observacoes: "",
-        parcelas: "",
+        parcela_atual: null,
+        parcela_total: null,
         cod_barras: "",
         valor: 0,
         pago: false,
         metodo_pagamento: "",
+      },
+      erros: {
+        descricao: "",
+        dia: "",
+        valor: "",
+        parcela_atual: "",
+        parcela_total: "",
       },
     };
   },
@@ -696,13 +758,112 @@ export default {
         descricao: "",
         dia: null,
         observacoes: "",
-        parcelas: "",
+        parcela_atual: null,
+        parcela_total: null,
         cod_barras: "",
         valor: 0,
         pago: false,
         metodo_pagamento: "",
       };
+      this.erros = {
+        descricao: "",
+        dia: "",
+        valor: "",
+        parcela_atual: "",
+        parcela_total: "",
+      };
       this.isModalOpen = true;
+    },
+
+    validarCampos() {
+      this.erros = {
+        descricao: "",
+        dia: "",
+        valor: "",
+        parcela_atual: "",
+        parcela_total: "",
+      };
+
+      let temErro = false;
+
+      if (!this.novaDespesa.descricao || !this.novaDespesa.descricao.trim()) {
+        this.erros.descricao = "O nome do aluno é obrigatório.";
+        temErro = true;
+      }
+
+      if (
+        this.novaDespesa.dia === null ||
+        this.novaDespesa.dia === undefined ||
+        this.novaDespesa.dia === "" ||
+        Number.isNaN(Number(this.novaDespesa.dia))
+      ) {
+        this.erros.dia = "O dia do vencimento do pagamento é obrigatório.";
+        temErro = true;
+      } else {
+        const diaNumero = Number(this.novaDespesa.dia);
+        if (!Number.isInteger(diaNumero) || diaNumero < 1 || diaNumero > 31) {
+          this.erros.dia =
+            "O dia de vencimento deve ser um número entre 1 e 31.";
+          temErro = true;
+        }
+      }
+
+      if (
+        this.novaDespesa.valor === null ||
+        this.novaDespesa.valor === undefined ||
+        this.novaDespesa.valor === "" ||
+        Number.isNaN(Number(this.novaDespesa.valor))
+      ) {
+        this.erros.valor = "O valor é obrigatório.";
+        temErro = true;
+      } else {
+        const valorNumero = Number(this.novaDespesa.valor);
+        if (valorNumero <= 0) {
+          this.erros.valor = "O valor deve ser maior que 0.";
+          temErro = true;
+        }
+      }
+
+      if (
+        this.novaDespesa.parcela_atual === null ||
+        this.novaDespesa.parcela_atual === undefined ||
+        Number.isNaN(Number(this.novaDespesa.parcela_atual))
+      ) {
+        this.erros.parcela_atual = "A parcela atual é obrigatória.";
+        temErro = true;
+      } else {
+        const parcelaAtual = Number(this.novaDespesa.parcela_atual);
+        if (!Number.isInteger(parcelaAtual) || parcelaAtual < 1) {
+          this.erros.parcela_atual =
+            "A parcela atual deve ser um número inteiro maior que 0.";
+          temErro = true;
+        }
+      }
+
+      if (
+        this.novaDespesa.parcela_total === null ||
+        this.novaDespesa.parcela_total === undefined ||
+        Number.isNaN(Number(this.novaDespesa.parcela_total))
+      ) {
+        this.erros.parcela_total = "O total de parcelas é obrigatório.";
+        temErro = true;
+      } else {
+        const parcelaTotal = Number(this.novaDespesa.parcela_total);
+        if (!Number.isInteger(parcelaTotal) || parcelaTotal < 1) {
+          this.erros.parcela_total =
+            "O total de parcelas deve ser um número inteiro maior que 0.";
+          temErro = true;
+        } else {
+          const parcelaAtual = Number(this.novaDespesa.parcela_atual);
+          if (parcelaAtual > parcelaTotal) {
+            this.erros.parcela_total =
+              "A parcela atual não pode ser maior que o total de parcelas.";
+            temErro = true;
+          }
+        }
+      }
+
+      return !temErro;
     },
 
     onDragStart(index, event) {
@@ -989,31 +1150,16 @@ export default {
     },
 
     async salvarDespesa() {
+      if (!this.validarCampos()) {
+        return;
+      }
+
       this.isLoading = true;
       this.loadingMessage = "Salvando nova despesa...";
       try {
         if (this.mesAtivo === null || this.mesAtivo === undefined) {
-          throw new Error("Selecione um mês antes de salvar a despesa.");
-        }
-
-        if (!this.novaDespesa.descricao || !this.novaDespesa.descricao.trim()) {
-          throw new Error("O nome do aluno é obrigatório.");
-        }
-
-        if (
-          this.novaDespesa.dia === null ||
-          this.novaDespesa.dia === undefined ||
-          this.novaDespesa.dia === "" ||
-          Number.isNaN(Number(this.novaDespesa.dia))
-        ) {
-          throw new Error("O dia do vencimento do pagamento é obrigatório.");
-        }
-
-        const diaNumero = Number(this.novaDespesa.dia);
-        if (!Number.isInteger(diaNumero) || diaNumero < 1 || diaNumero > 31) {
-          throw new Error(
-            "O dia de vencimento deve ser um número entre 1 e 31.",
-          );
+          alert("Selecione um mês antes de salvar a despesa.");
+          return;
         }
 
         const ordensExistentes = this.despesas.map(
@@ -1048,13 +1194,20 @@ export default {
           );
         }
 
+        const diaNumero = Number(this.novaDespesa.dia);
+        const parcelasFormatada = `${this.novaDespesa.parcela_atual}/${this.novaDespesa.parcela_total}`;
+
         const dadosParaSalvar = {
-          ...this.novaDespesa,
           mes_id: mesIdParaSalvar,
           ordem: ordemFinal,
+          descricao: this.novaDespesa.descricao.trim(),
           dia: diaNumero,
           valor: Number(this.novaDespesa.valor) || 0,
-          descricao: this.novaDespesa.descricao.trim(),
+          observacoes: this.novaDespesa.observacoes,
+          metodo_pagamento: this.novaDespesa.metodo_pagamento,
+          parcelas: parcelasFormatada,
+          cod_barras: this.novaDespesa.cod_barras,
+          pago: false,
         };
 
         console.log("SalvarDespesa: payload", dadosParaSalvar);
@@ -1076,7 +1229,8 @@ export default {
           descricao: "",
           dia: null,
           observacoes: "",
-          parcelas: "",
+          parcela_atual: null,
+          parcela_total: null,
           cod_barras: "",
           valor: 0,
           pago: false,

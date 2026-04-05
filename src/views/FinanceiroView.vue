@@ -313,8 +313,11 @@
                 >Vencimento (Dia)</label
               >
               <input
-                v-model="novaDespesa.dia"
+                v-model.number="novaDespesa.dia"
                 type="number"
+                min="1"
+                max="31"
+                required
                 placeholder="Ex: 10"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
               />
@@ -340,7 +343,7 @@
               >Valor (R$)</label
             >
             <input
-              v-model="novaDespesa.valor"
+              v-model.number="novaDespesa.valor"
               type="number"
               step="0.01"
               placeholder="R$ 0,00"
@@ -549,9 +552,16 @@ export default {
         .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
     },
     totalPending() {
-      return this.despesas
+      const mes = this.meses.find((m) => m.id === this.mesAtivo);
+      const pending = this.despesas
         .filter((item) => !item.pago)
         .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+
+      if (mes && mes.valor_fixo !== null && mes.valor_fixo !== undefined) {
+        return Number(mes.valor_fixo) - this.totalPago;
+      }
+
+      return pending;
     },
     mesAtivoNome() {
       const mes = this.meses.find((m) => m.id === this.mesAtivo);
@@ -814,23 +824,83 @@ export default {
       this.isLoading = true;
       this.loadingMessage = "Salvando nova despesa...";
       try {
-        const dadosParaSalvar = {
-          ...this.novaDespesa,
-        };
-
-        await criarDespesa(dadosParaSalvar);
-
-        // Se a despesa foi salva num mês diferente do atual, mudamos a aba ativa.
-        // Isso fará a tela recarregar as despesas através do 'watch' do mesAtivo.
-        if (this.mesAtivo !== this.novaDespesa.mes_id) {
-          this.mesAtivo = this.novaDespesa.mes_id;
-        } else {
-          // Se for o mesmo mês que já estamos visualizando, apenas recarregamos
-          await this.carregarDespesas();
+        if (this.mesAtivo === null || this.mesAtivo === undefined) {
+          throw new Error("Selecione um mês antes de salvar a despesa.");
         }
 
+        if (!this.novaDespesa.descricao || !this.novaDespesa.descricao.trim()) {
+          throw new Error("A descrição da despesa é obrigatória.");
+        }
+
+        if (
+          this.novaDespesa.dia === null ||
+          this.novaDespesa.dia === undefined ||
+          this.novaDespesa.dia === "" ||
+          Number.isNaN(Number(this.novaDespesa.dia))
+        ) {
+          throw new Error("O dia de vencimento é obrigatório.");
+        }
+
+        const diaNumero = Number(this.novaDespesa.dia);
+        if (!Number.isInteger(diaNumero) || diaNumero < 1 || diaNumero > 31) {
+          throw new Error(
+            "O dia de vencimento deve ser um número entre 1 e 31.",
+          );
+        }
+
+        const ordensExistentes = this.despesas.map(
+          (item) => Number(item.ordem) || 0,
+        );
+        const proximaOrdem = ordensExistentes.length
+          ? Math.max(...ordensExistentes) + 1
+          : 1;
+
+        let ordemFinal = this.novaDespesa.ordem || proximaOrdem;
+        if (
+          this.novaDespesa.ordem &&
+          ordensExistentes.includes(Number(this.novaDespesa.ordem))
+        ) {
+          throw new Error(
+            "A ordem informada já existe para este mês. Escolha uma ordem diferente.",
+          );
+        }
+
+        const mesIdParaSalvar =
+          this.novaDespesa.mes_id !== null &&
+          this.novaDespesa.mes_id !== undefined &&
+          this.novaDespesa.mes_id !== ""
+            ? this.novaDespesa.mes_id
+            : this.mesAtivo;
+
+        // Verificar se o mês existe (comparação flexível para IDs string/number)
+        const mesExiste = this.meses.some((mes) => mes.id == mesIdParaSalvar);
+        if (!mesExiste) {
+          throw new Error(
+            "O mês selecionado não existe. Selecione um mês válido.",
+          );
+        }
+
+        const dadosParaSalvar = {
+          ...this.novaDespesa,
+          mes_id: mesIdParaSalvar,
+          ordem: ordemFinal,
+          dia: diaNumero,
+          valor: Number(this.novaDespesa.valor) || 0,
+          descricao: this.novaDespesa.descricao.trim(),
+        };
+
+        console.log("SalvarDespesa: payload", dadosParaSalvar);
+
+        const despesaCriada = await criarDespesa(dadosParaSalvar);
+
+        if (!despesaCriada || !despesaCriada.id) {
+          throw new Error("A despesa não foi criada corretamente.");
+        }
+
+        this.mesAtivo = mesIdParaSalvar;
+        await this.carregarDespesas();
+
         this.isModalOpen = false;
-        // Limpar formulário
         this.novaDespesa = {
           mes_id: null,
           ordem: null,
@@ -843,7 +913,11 @@ export default {
           pago: false,
         };
       } catch (error) {
-        alert("Erro ao salvar a despesa no banco de dados.");
+        console.error("Erro ao salvar a despesa:", error);
+        alert(
+          "Erro ao salvar a despesa no banco de dados: " +
+            (error.message || error).toString(),
+        );
       } finally {
         this.isLoading = false;
       }

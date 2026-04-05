@@ -70,6 +70,7 @@ export async function excluirDespesa(id) {
 }
 
 export async function criarDespesa(despesa) {
+    console.log("Service: Criando despesa com dados:", despesa);
     const { data, error } = await supabase
         .from("despesas")
         .insert([despesa])
@@ -77,9 +78,11 @@ export async function criarDespesa(despesa) {
 
     if (error) {
         console.error("Service: Erro ao criar despesa:", error);
-        throw error;
+        throw new Error(error.message || "Erro ao criar despesa no banco de dados.");
     }
-    return data[0];
+    console.log("Service: Despesa criada com sucesso:", data);
+    // Se data estiver vazio devido a RLS, retorna a despesa enviada
+    return data && data.length > 0 ? data[0] : { ...despesa, id: 'temp' };
 }
 
 export async function atualizarStatusDespesa(id, pago) {

@@ -1,5 +1,8 @@
 <template>
   <div class="min-h-screen bg-[#f8f9fc] p-8 font-sans text-gray-800 relative">
+    <!-- Componente de Loading Global -->
+    <AppLoading :active="isLoading" :message="loadingMessage" />
+
     <header class="flex items-center justify-between mb-8">
       <div>
         <h1 class="text-3xl font-bold text-[#0f172a] tracking-tight">
@@ -10,7 +13,7 @@
         </p>
       </div>
       <button
-        @click="isModalOpen = true"
+        @click="abrirModalNovaDespesa"
         class="flex items-center gap-2 bg-[#6366f1] hover:bg-[#4f46e5] transition-colors text-white px-5 py-2.5 rounded-lg font-medium text-sm shadow-sm"
       >
         <svg
@@ -166,7 +169,7 @@
           <tbody class="divide-y divide-gray-100">
             <tr
               v-for="item in despesas"
-              :key="item.ordem"
+              :key="item.id"
               class="hover:bg-gray-50/50 transition-colors group"
             >
               <td class="py-4 px-6">
@@ -198,7 +201,7 @@
                 {{ item.parcelas || "-" }}
               </td>
               <td class="py-4 px-6 text-center text-gray-400">
-                {{ item.codBarras || "-" }}
+                {{ item.cod_barras || "-" }}
               </td>
               <td class="py-4 px-6 text-right font-bold text-gray-900">
                 {{ formatarMoeda(item.valor) }}
@@ -231,7 +234,7 @@
               </td>
               <td class="py-4 px-6 text-center">
                 <button
-                  @click="excluirDespesa(item.ordem)"
+                  @click="excluirDespesa(item.id)"
                   class="text-gray-300 hover:text-red-500 transition-colors group-hover:opacity-100"
                 >
                   <i class="ph-bold ph-trash text-lg"></i>
@@ -269,6 +272,21 @@
         </div>
 
         <div class="p-6 space-y-5">
+          <div>
+            <label
+              class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
+              >Mês de Referência</label
+            >
+            <select
+              v-model="novaDespesa.mes_id"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+            >
+              <option v-for="mes in meses" :key="mes.id" :value="mes.id">
+                {{ mes.nome }} - {{ mes.ano }}
+              </option>
+            </select>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label
@@ -356,7 +374,7 @@
               >Código de Barras</label
             >
             <textarea
-              v-model="novaDespesa.codBarras"
+              v-model="novaDespesa.cod_barras"
               rows="3"
               placeholder="Cole o código aqui..."
               class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1] resize-none"
@@ -409,7 +427,7 @@
         <div class="p-6">
           <p class="text-[14px] text-slate-600 mb-1 leading-relaxed">
             Defina um valor fixo para o mês de
-            <strong class="text-slate-800 font-bold">Abril - 2026</strong>.
+            <strong class="text-slate-800 font-bold">{{ mesAtivoNome }}</strong>.
           </p>
           <p class="text-[14px] text-slate-500 mb-6">
             Remova para calcular o total automaticamente.
@@ -426,6 +444,7 @@
                 >R$</span
               >
               <input
+                v-model="novoValorFixo"
                 type="number"
                 step="0.01"
                 placeholder="0,00"
@@ -437,6 +456,7 @@
 
         <div class="px-6 py-4 flex items-center justify-between pb-6">
           <button
+            @click="removerValorFixo"
             class="text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors"
           >
             Remover Fixo
@@ -450,6 +470,7 @@
               Cancelar
             </button>
             <button
+              @click="salvarValorFixo"
               class="px-6 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm"
             >
               Salvar
@@ -462,34 +483,50 @@
 </template>
 
 <script>
-import { buscarMeses, buscarDespesas } from "../services/FinanceiroService.js";
+import AppLoading from "../components/AppLoading.vue";
+import {
+  buscarMeses,
+  buscarDespesas,
+  excluirDespesa,
+  criarDespesa,
+  atualizarStatusDespesa,
+  atualizarValorFixoMes,
+} from "../services/FinanceiroService.js";
+
 export default {
+  components: { AppLoading },
   // 1. DATA: Substitui o "ref()". É aqui que ficam as variáveis reativas.
   data() {
     return {
+      isLoading: false,
+      loadingMessage: "Carregando...",
       isModalOpen: false,
       isEditTotalModalOpen: false,
       mesAtivo: null,
+      novoValorFixo: null,
       meses: [],
       novaDespesa: {
+        mes_id: null,
         ordem: null,
         descricao: "",
         dia: null,
         observacoes: "",
         parcelas: "",
-        codBarras: "",
+        cod_barras: "",
         valor: 0,
         pago: false,
       },
       despesas: [],
-      mesAtivo: "abril-2026",
     };
   },
 
   // 2. COMPUTED: Substitui o "computed(() => {})". Usado para cálculos automáticos.
   computed: {
     totalMes() {
-      // Sempre usar this.nomeDaVariavel na Options API
+      const mes = this.meses.find((m) => m.id === this.mesAtivo);
+      if (mes && mes.valor_fixo !== null && mes.valor_fixo !== undefined) {
+        return Number(mes.valor_fixo);
+      }
       return this.despesas.reduce(
         (acc, curr) => acc + Number(curr.valor || 0),
         0,
@@ -514,14 +551,48 @@ export default {
   // Monitora mudanças no mês ativo para recarregar despesas
   watch: {
     mesAtivo(novoMes) {
-      if (novoMes) this.buscarDespesas();
+      if (novoMes) {
+        this.carregarDespesas();
+      }
     },
   },
 
   // 3. METHODS: Substitui as funções const = () => {}.
   methods: {
+    abrirModalNovaDespesa() {
+      this.novaDespesa.mes_id = this.mesAtivo;
+      this.isModalOpen = true;
+    },
+
     openEditTotal() {
+      const mesAtual = this.meses.find((m) => m.id === this.mesAtivo);
+      this.novoValorFixo = mesAtual ? mesAtual.valor_fixo : null;
       this.isEditTotalModalOpen = true;
+    },
+
+    async salvarValorFixo() {
+      this.isLoading = true;
+      try {
+        const valorFixoTratado = this.novoValorFixo !== null && this.novoValorFixo !== "" ? Number(this.novoValorFixo) : null;
+        await atualizarValorFixoMes(this.mesAtivo, valorFixoTratado);
+        
+        // Atualiza a lista local de meses para refletir o novo valor
+        const mesIndex = this.meses.findIndex(m => m.id === this.mesAtivo);
+        if (mesIndex !== -1) {
+          this.meses[mesIndex].valor_fixo = valorFixoTratado;
+        }
+
+        this.isEditTotalModalOpen = false;
+      } catch (error) {
+        alert("Erro ao atualizar o valor fixo do mês.");
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async removerValorFixo() {
+      this.novoValorFixo = null;
+      await this.salvarValorFixo();
     },
 
     scrollTabs(direction) {
@@ -538,23 +609,30 @@ export default {
     },
 
     //meses
-    async buscarMeses() {
+    async carregarMeses() {
+      this.isLoading = true;
+      this.loadingMessage = "Buscando meses...";
       try {
         this.meses = await buscarMeses();
       } catch (error) {
         console.error("Erro ao carregar meses:", error);
+        this.meses = [];
+      } finally {
+        this.isLoading = false;
       }
     },
 
-    async carregarDespesasNaTela(mesId) {
+    async carregarDespesas() {
+      this.isLoading = true;
+      this.loadingMessage = "Atualizando lista de gastos...";
       try {
-        // Chama o service e espera a resposta
-        const dadosDoBanco = await buscarDespesas(mesId);
-
-        // O SEGREDO ESTÁ AQUI NA VIEW: guarda a resposta na variável da tela!
-        this.despesas = dadosDoBanco;
+        if (!this.mesAtivo) return;
+        const dados = await buscarDespesas(this.mesAtivo);
+        this.despesas = dados;
       } catch (error) {
         console.error("Erro ao carregar despesas:", error);
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -565,38 +643,119 @@ export default {
       }).format(valor);
     },
 
-    alternarStatus(item) {
-      item.pago = !item.pago;
+    async alternarStatus(item) {
+      if (!item.id) {
+        alert("Erro: Esta despesa não possui um ID válido no banco.");
+        return;
+      }
+
+      const novoStatus = !item.pago;
+      this.isLoading = true;
+      this.loadingMessage = "Atualizando status...";
+      try {
+        await atualizarStatusDespesa(item.id, novoStatus);
+        item.pago = novoStatus;
+      } catch (error) {
+        console.error("Erro ao alternar status:", error);
+
+        const msg = error.message.includes("fetch")
+          ? "Erro de conexão/CORS: Verifique as políticas RLS no Supabase e se o AdBlock está ativo."
+          : error.message;
+        alert("Não foi possível atualizar: " + msg);
+      } finally {
+        this.isLoading = false;
+      }
     },
 
-    excluirDespesa(ordem) {
-      this.despesas = this.despesas.filter((d) => d.ordem !== ordem);
+    async excluirDespesa(id) {
+      if (!confirm("Tem certeza que deseja excluir esta despesa?")) return;
+
+      this.isLoading = true;
+      try {
+        await excluirDespesa(id);
+        // Remove da lista local apenas após confirmar a exclusão no banco
+        this.despesas = this.despesas.filter((d) => d.id !== id);
+      } catch (error) {
+        alert("Erro ao excluir a despesa do banco de dados.");
+      } finally {
+        this.isLoading = false;
+      }
     },
 
-    salvarDespesa() {
-      this.despesas.push({ ...this.novaDespesa });
-      this.isModalOpen = false;
-      // Limpar formulário
-      this.novaDespesa = {
-        ordem: null,
-        descricao: "",
-        dia: null,
-        observacoes: "",
-        parcelas: "",
-        codBarras: "",
-        valor: 0,
-        pago: false,
-      };
+    async salvarDespesa() {
+      this.isLoading = true;
+      this.loadingMessage = "Salvando nova despesa...";
+      try {
+        const dadosParaSalvar = {
+          ...this.novaDespesa,
+        };
+
+        await criarDespesa(dadosParaSalvar);
+
+        // Se a despesa foi salva num mês diferente do atual, mudamos a aba ativa.
+        // Isso fará a tela recarregar as despesas através do 'watch' do mesAtivo.
+        if (this.mesAtivo !== this.novaDespesa.mes_id) {
+          this.mesAtivo = this.novaDespesa.mes_id;
+        } else {
+          // Se for o mesmo mês que já estamos visualizando, apenas recarregamos
+          await this.carregarDespesas();
+        }
+
+        this.isModalOpen = false;
+        // Limpar formulário
+        this.novaDespesa = {
+          mes_id: null,
+          ordem: null,
+          descricao: "",
+          dia: null,
+          observacoes: "",
+          parcelas: "",
+          cod_barras: "",
+          valor: 0,
+          pago: false,
+        };
+      } catch (error) {
+        alert("Erro ao salvar a despesa no banco de dados.");
+      } finally {
+        this.isLoading = false;
+      }
     },
   },
 
   // 4. MOUNTED: Substitui o "onMounted()". Roda assim que a tela carrega.
   async mounted() {
-    await this.buscarMeses();
-    await this.carregarDespesasNaTela(this.mesAtivo);
-    // Define o primeiro mês da lista como ativo caso nenhum esteja selecionado
-    if (this.meses.length > 0 && !this.mesAtivo) {
-      this.mesAtivo = this.meses[0].id;
+    await this.carregarMeses();
+
+    if (this.meses && this.meses.length > 0) {
+      // Lógica para identificar o mês e ano atual (Ex: Junho e 2024)
+      const agora = new Date();
+      const mesesNomes = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+      ];
+      const nomeMesAtual = mesesNomes[agora.getMonth()];
+      const anoAtual = agora.getFullYear();
+
+      // Procura se o mês atual já existe cadastrado no banco de dados
+      const mesEncontrado = this.meses.find(
+        (m) => m.nome === nomeMesAtual && m.ano === anoAtual,
+      );
+
+      // Se achar, seleciona ele. Caso contrário, pega o primeiro da lista.
+      // Atribuir valor ao mesAtivo dispara automaticamente o 'watch' que busca as despesas.
+      this.mesAtivo = mesEncontrado ? mesEncontrado.id : this.meses[0].id;
+    } else {
+      console.warn("Nenhum mês encontrado no banco de dados.");
     }
   },
 };

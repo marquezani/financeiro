@@ -64,7 +64,9 @@
           <span class="text-sm font-medium text-gray-500 mb-1 block"
             >Já Pago</span
           >
-          <h2 class="text-2xl font-bold text-[#10b981]">R$ 0,00</h2>
+          <h2 class="text-2xl font-bold text-[#10b981]">
+            {{ formatarMoeda(totalPago) }}
+          </h2>
         </div>
         <div
           class="h-12 w-12 rounded-full bg-[#ecfdf5] flex items-center justify-center"
@@ -203,12 +205,18 @@
               </td>
               <td class="py-4 px-6 text-center">
                 <button
-                  class="text-gray-300 hover:text-[#6366f1] transition-colors"
+                  @click="alternarStatus(item)"
+                  :class="[
+                    'transition-colors',
+                    item.pago
+                      ? 'text-green-500'
+                      : 'text-gray-300 hover:text-[#6366f1]',
+                  ]"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-6 w-6 mx-auto"
-                    fill="none"
+                    :fill="item.pago ? 'currentColor' : 'none'"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
@@ -223,6 +231,7 @@
               </td>
               <td class="py-4 px-6 text-center">
                 <button
+                  @click="excluirDespesa(item.ordem)"
                   class="text-gray-300 hover:text-red-500 transition-colors group-hover:opacity-100"
                 >
                   <i class="ph-bold ph-trash text-lg"></i>
@@ -267,6 +276,7 @@
                 >Ordem</label
               >
               <input
+                v-model="novaDespesa.ordem"
                 type="number"
                 value="10"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
@@ -278,6 +288,7 @@
                 >Vencimento (Dia)</label
               >
               <input
+                v-model="novaDespesa.dia"
                 type="number"
                 placeholder="Ex: 10"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
@@ -291,6 +302,7 @@
               >Descrição do Pagamento</label
             >
             <input
+              v-model="novaDespesa.descricao"
               type="text"
               placeholder="Ex: Condomínio"
               class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
@@ -303,6 +315,7 @@
               >Valor (R$)</label
             >
             <input
+              v-model="novaDespesa.valor"
               type="number"
               step="0.01"
               placeholder="R$ 0,00"
@@ -317,6 +330,7 @@
                 >Observações</label
               >
               <input
+                v-model="novaDespesa.observacoes"
                 type="text"
                 placeholder="Detalhes opcionais"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
@@ -328,6 +342,7 @@
                 >Parcelas</label
               >
               <input
+                v-model="novaDespesa.parcelas"
                 type="text"
                 placeholder="Ex: 1/12"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
@@ -341,6 +356,7 @@
               >Código de Barras</label
             >
             <textarea
+              v-model="novaDespesa.codBarras"
               rows="3"
               placeholder="Cole o código aqui..."
               class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1] resize-none"
@@ -356,6 +372,7 @@
             Cancelar
           </button>
           <button
+            @click="salvarDespesa"
             class="px-5 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm"
           >
             Salvar Despesa
@@ -444,118 +461,143 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-
-// Controle do Modal Novo Pagamento
-const isModalOpen = ref(false);
-
-// Controle do Modal Editar Total
-const isEditTotalModalOpen = ref(false);
-
-const openEditTotal = () => {
-  isEditTotalModalOpen.value = true;
-};
-
-// Controle de Navegação de Meses
-const mesAtivo = ref("abril-2026");
-const tabsContainer = ref(null);
-
-const scrollTabs = (direction) => {
-  if (tabsContainer.value) {
-    const scrollAmount = 250;
-    tabsContainer.value.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  }
-};
-
-const meses = ref([
-  { id: "setembro-2025", nome: "Setembro", ano: "2025" },
-  { id: "outubro-2025", nome: "Outubro", ano: "2025" },
-  { id: "novembro-2025", nome: "Novembro", ano: "2025" },
-  { id: "dezembro-2025", nome: "Dezembro", ano: "2025" },
-  { id: "janeiro-2026", nome: "Janeiro", ano: "2026" },
-  { id: "fevereiro-2026", nome: "Fevereiro", ano: "2026" },
-  { id: "marco-2026", nome: "Março", ano: "2026" },
-  { id: "abril-2026", nome: "Abril", ano: "2026" },
-]);
-
-const despesas = ref([
-  {
-    ordem: 1,
-    descricao: "condominio - Pagani",
-    dia: 10,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 553.57,
+<script>
+import { buscarMeses, buscarDespesas } from "../services/FinanceiroService.js";
+export default {
+  // 1. DATA: Substitui o "ref()". É aqui que ficam as variáveis reativas.
+  data() {
+    return {
+      isModalOpen: false,
+      isEditTotalModalOpen: false,
+      mesAtivo: null,
+      meses: [],
+      novaDespesa: {
+        ordem: null,
+        descricao: "",
+        dia: null,
+        observacoes: "",
+        parcelas: "",
+        codBarras: "",
+        valor: 0,
+        pago: false,
+      },
+      despesas: [],
+      mesAtivo: "abril-2026",
+    };
   },
-  {
-    ordem: 2,
-    descricao: "cartão NuBank",
-    dia: 11,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 2100.9,
-  },
-  {
-    ordem: 3,
-    descricao: "Meu celular",
-    dia: 12,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 28.9,
-  },
-  {
-    ordem: 4,
-    descricao: "Internet",
-    dia: 15,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 104.79,
-  },
-  {
-    ordem: 5,
-    descricao: "caixa / taxa construção",
-    dia: 17,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 1841.66,
-  },
-  {
-    ordem: 6,
-    descricao: "Parcela apartamento",
-    dia: 20,
-    observacoes: "",
-    parcelas: "",
-    codBarras: "",
-    valor: 1052.37,
-  },
-]);
 
-// Cálculo do Total do Mês (soma de todas as despesas)
-const totalMes = computed(() => {
-  return despesas.value.reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
-});
+  // 2. COMPUTED: Substitui o "computed(() => {})". Usado para cálculos automáticos.
+  computed: {
+    totalMes() {
+      // Sempre usar this.nomeDaVariavel na Options API
+      return this.despesas.reduce(
+        (acc, curr) => acc + Number(curr.valor || 0),
+        0,
+      );
+    },
+    totalPago() {
+      return this.despesas
+        .filter((item) => item.pago)
+        .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+    },
+    totalPending() {
+      return this.despesas
+        .filter((item) => !item.pago)
+        .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+    },
+    mesAtivoNome() {
+      const mes = this.meses.find((m) => m.id === this.mesAtivo);
+      return mes ? `${mes.nome} - ${mes.ano}` : "Mês atual";
+    },
+  },
 
-// Cálculo do Valor Pendente (apenas o que ainda não foi pago)
-const totalPending = computed(() => {
-  return despesas.value
-    .filter((item) => !item.pago)
-    .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
-});
+  // Monitora mudanças no mês ativo para recarregar despesas
+  watch: {
+    mesAtivo(novoMes) {
+      if (novoMes) this.buscarDespesas();
+    },
+  },
 
-// Função utilitária para formatar o valor monetário
-const formatarMoeda = (valor) => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(valor);
+  // 3. METHODS: Substitui as funções const = () => {}.
+  methods: {
+    openEditTotal() {
+      this.isEditTotalModalOpen = true;
+    },
+
+    scrollTabs(direction) {
+      // Na Options API, acessamos a div "ref='tabsContainer'" através de this.$refs
+      const container = this.$refs.tabsContainer;
+
+      if (container) {
+        const scrollAmount = 250;
+        container.scrollBy({
+          left: direction === "left" ? -scrollAmount : scrollAmount,
+          behavior: "smooth",
+        });
+      }
+    },
+
+    //meses
+    async buscarMeses() {
+      try {
+        this.meses = await buscarMeses();
+      } catch (error) {
+        console.error("Erro ao carregar meses:", error);
+      }
+    },
+
+    async carregarDespesasNaTela(mesId) {
+      try {
+        // Chama o service e espera a resposta
+        const dadosDoBanco = await buscarDespesas(mesId);
+
+        // O SEGREDO ESTÁ AQUI NA VIEW: guarda a resposta na variável da tela!
+        this.despesas = dadosDoBanco;
+      } catch (error) {
+        console.error("Erro ao carregar despesas:", error);
+      }
+    },
+
+    formatarMoeda(valor) {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(valor);
+    },
+
+    alternarStatus(item) {
+      item.pago = !item.pago;
+    },
+
+    excluirDespesa(ordem) {
+      this.despesas = this.despesas.filter((d) => d.ordem !== ordem);
+    },
+
+    salvarDespesa() {
+      this.despesas.push({ ...this.novaDespesa });
+      this.isModalOpen = false;
+      // Limpar formulário
+      this.novaDespesa = {
+        ordem: null,
+        descricao: "",
+        dia: null,
+        observacoes: "",
+        parcelas: "",
+        codBarras: "",
+        valor: 0,
+        pago: false,
+      };
+    },
+  },
+
+  // 4. MOUNTED: Substitui o "onMounted()". Roda assim que a tela carrega.
+  async mounted() {
+    await this.buscarMeses();
+    await this.carregarDespesasNaTela(this.mesAtivo);
+    // Define o primeiro mês da lista como ativo caso nenhum esteja selecionado
+    if (this.meses.length > 0 && !this.mesAtivo) {
+      this.mesAtivo = this.meses[0].id;
+    }
+  },
 };
 </script>

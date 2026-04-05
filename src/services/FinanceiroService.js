@@ -107,6 +107,25 @@ export async function atualizarStatusDespesa(id, pago) {
     }
 }
 
+export async function atualizarMetodoPagamento(id, metodo) {
+    if (!id) throw new Error("ID da despesa é obrigatório para atualização.");
+
+    const { data, error } = await supabase
+        .from("despesas")
+        .update({ metodo_pagamento: metodo })
+        .eq("id", id)
+        .select();
+
+    if (error) {
+        console.error("Service: Erro ao atualizar método de pagamento:", error.message, error.details);
+        throw error;
+    }
+
+    if (!data || data.length === 0) {
+        throw new Error("Nenhum registro foi atualizado para o método de pagamento.");
+    }
+}
+
 export async function atualizarOrdensDespesas(despesas) {
     if (!Array.isArray(despesas) || despesas.length === 0) {
         return [];

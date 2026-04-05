@@ -169,14 +169,28 @@
                 }}</span>
               </td>
               <td class="py-4 px-6">
-                <span
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#dcfce7] text-[#166534]"
-                >
-                  Dia {{ item.dia }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span :class="obterClassesDia(item.dia, item.pago)">
+                    Dia {{ item.dia }}
+                  </span>
+                  <span
+                    v-if="item.pago"
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
+                  >
+                    ✓ Pago
+                  </span>
+                </div>
               </td>
               <td class="py-4 px-6 text-center text-gray-400">
-                {{ item.observacoes || "-" }}
+                <div class="space-y-1">
+                  <div>{{ item.observacoes || "-" }}</div>
+                  <div
+                    v-if="item.metodo_pagamento"
+                    class="text-[11px] font-semibold text-indigo-600"
+                  >
+                    {{ item.metodo_pagamento }}
+                  </div>
+                </div>
               </td>
               <td class="py-4 px-6 text-center text-gray-400">
                 {{ item.parcelas || "-" }}
@@ -215,7 +229,7 @@
               </td>
               <td class="py-4 px-6 text-center">
                 <button
-                  @click="excluirDespesa(item.id)"
+                  @click="solicitarExclusao(item.id, item.descricao)"
                   class="text-gray-300 hover:text-red-500 transition-colors group-hover:opacity-100"
                 >
                   <i class="ph-bold ph-trash text-lg"></i>
@@ -340,6 +354,24 @@
             <div>
               <label
                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
+                >Método de Pagamento</label
+              >
+              <select
+                v-model="novaDespesa.metodo_pagamento"
+                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+              >
+                <option value="">Nenhum</option>
+                <option value="Pix">Pix</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Depósito">Depósito</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
                 >Parcelas</label
               >
               <input
@@ -381,6 +413,153 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="isDeleteModalOpen"
+      class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-[420px] flex flex-col"
+        @click.stop
+      >
+        <div
+          class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+        >
+          <div class="flex items-center gap-2">
+            <i class="ph-bold ph-trash text-red-500 text-xl"></i>
+            <h3 class="text-base font-bold text-[#0f172a]">
+              Confirmar exclusão
+            </h3>
+          </div>
+          <button
+            @click="cancelarExclusao"
+            class="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-slate-600">
+            Tem certeza que deseja excluir
+            <strong class="text-slate-900">{{
+              despesaParaExcluirDescricao
+            }}</strong
+            >?
+          </p>
+          <p class="text-sm text-slate-500">Esta ação não pode ser desfeita.</p>
+        </div>
+
+        <div class="px-6 py-4 flex items-center justify-end gap-3 pb-6">
+          <button
+            @click="cancelarExclusao"
+            class="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="confirmarExclusao"
+            class="px-5 py-2.5 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors shadow-sm"
+          >
+            Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="isPaymentMethodModalOpen"
+      class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-[420px] flex flex-col"
+        @click.stop
+      >
+        <div
+          class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+        >
+          <div class="flex items-center gap-2">
+            <i class="ph-bold ph-creditcard text-[#6366f1] text-xl"></i>
+            <h3 class="text-base font-bold text-[#0f172a]">Como foi pago?</h3>
+          </div>
+          <button
+            @click="cancelarPagamento"
+            class="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-3">
+          <label
+            class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+            :class="
+              metodoSelecionado === 'Pix' ? 'border-[#6366f1] bg-indigo-50' : ''
+            "
+          >
+            <input
+              type="radio"
+              v-model="metodoSelecionado"
+              value="Pix"
+              class="w-4 h-4 cursor-pointer"
+            />
+            <span class="text-sm font-medium text-slate-700">Pix</span>
+          </label>
+
+          <label
+            class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+            :class="
+              metodoSelecionado === 'Dinheiro'
+                ? 'border-[#6366f1] bg-indigo-50'
+                : ''
+            "
+          >
+            <input
+              type="radio"
+              v-model="metodoSelecionado"
+              value="Dinheiro"
+              class="w-4 h-4 cursor-pointer"
+            />
+            <span class="text-sm font-medium text-slate-700">Dinheiro</span>
+          </label>
+
+          <label
+            class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+            :class="
+              metodoSelecionado === 'Depósito'
+                ? 'border-[#6366f1] bg-indigo-50'
+                : ''
+            "
+          >
+            <input
+              type="radio"
+              v-model="metodoSelecionado"
+              value="Depósito"
+              class="w-4 h-4 cursor-pointer"
+            />
+            <span class="text-sm font-medium text-slate-700">Depósito</span>
+          </label>
+        </div>
+
+        <div
+          class="px-6 py-4 flex items-center justify-end gap-3 pb-6 border-t border-slate-100"
+        >
+          <button
+            @click="cancelarPagamento"
+            class="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="confirmarPagamento"
+            :disabled="!metodoSelecionado"
+            class="px-5 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -392,6 +571,7 @@ import {
   excluirDespesa,
   criarDespesa,
   atualizarStatusDespesa,
+  atualizarMetodoPagamento,
   atualizarOrdensDespesas,
 } from "../services/FinanceiroService.js";
 
@@ -403,6 +583,12 @@ export default {
       isLoading: false,
       loadingMessage: "Carregando...",
       isModalOpen: false,
+      isDeleteModalOpen: false,
+      isPaymentMethodModalOpen: false,
+      despesaParaExcluir: null,
+      despesaParaExcluirDescricao: "",
+      despesaSelecionada: null,
+      metodoSelecionado: "",
       mesAtivo: null,
       meses: [],
       despesas: [],
@@ -418,6 +604,7 @@ export default {
         cod_barras: "",
         valor: 0,
         pago: false,
+        metodo_pagamento: "",
       },
     };
   },
@@ -472,6 +659,7 @@ export default {
         cod_barras: "",
         valor: 0,
         pago: false,
+        metodo_pagamento: "",
       };
       this.isModalOpen = true;
     },
@@ -585,42 +773,138 @@ export default {
       }).format(valor);
     },
 
+    obterClassesDia(dia, pago) {
+      // Se está pago, retorna a cor verde
+      if (pago) {
+        return "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700";
+      }
+
+      // Calcula quantos dias faltam até o vencimento
+      const hoje = new Date();
+      const hojeData = new Date(
+        hoje.getFullYear(),
+        hoje.getMonth(),
+        hoje.getDate(),
+      );
+
+      // Encontra o mês ativo para pegar o ano
+      const mesAtual = this.meses.find((m) => m.id === this.mesAtivo);
+      const ano = mesAtual?.ano || hoje.getFullYear();
+
+      // Cria a data de vencimento
+      const vencimento = new Date(ano, hoje.getMonth(), dia);
+
+      // Se o dia de vencimento já passou neste mês, considera o próximo
+      if (vencimento < hojeData) {
+        vencimento.setMonth(vencimento.getMonth() + 1);
+      }
+
+      // Calcula diferença em dias
+      const diferenca = Math.floor(
+        (vencimento - hojeData) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diferenca <= 0) {
+        // Vermelho - já vencido
+        return "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700";
+      } else if (diferenca === 1) {
+        // Amarelo - faltando 1 dia
+        return "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700";
+      } else {
+        // Verde - mais de 2 dias
+        return "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700";
+      }
+    },
+
     async alternarStatus(item) {
       if (!item.id) {
         alert("Erro: Esta despesa não possui um ID válido no banco.");
         return;
       }
 
-      const novoStatus = !item.pago;
-      this.isLoading = true;
-      this.loadingMessage = "Atualizando status...";
-      try {
-        await atualizarStatusDespesa(item.id, novoStatus);
-        item.pago = novoStatus;
-      } catch (error) {
-        console.error("Erro ao alternar status:", error);
-
-        const msg = error.message.includes("fetch")
-          ? "Erro de conexão/CORS: Verifique as políticas RLS no Supabase e se o AdBlock está ativo."
-          : error.message;
-        alert("Não foi possível atualizar: " + msg);
-      } finally {
-        this.isLoading = false;
+      // Se já está pago, desmarcar direto
+      if (item.pago) {
+        this.isLoading = true;
+        this.loadingMessage = "Atualizando status...";
+        try {
+          await atualizarStatusDespesa(item.id, false);
+          await atualizarMetodoPagamento(item.id, "");
+          item.pago = false;
+          item.metodo_pagamento = "";
+        } catch (error) {
+          console.error("Erro ao alternar status:", error);
+          const msg = error.message.includes("fetch")
+            ? "Erro de conexão/CORS: Verifique as políticas RLS no Supabase e se o AdBlock está ativo."
+            : error.message;
+          alert("Não foi possível atualizar: " + msg);
+        } finally {
+          this.isLoading = false;
+        }
+      } else {
+        // Se não está pago, abrir modal para escolher método
+        this.despesaSelecionada = item;
+        this.metodoSelecionado = "";
+        this.isPaymentMethodModalOpen = true;
       }
     },
 
-    async excluirDespesa(id) {
-      if (!confirm("Tem certeza que deseja excluir esta despesa?")) return;
+    cancelarPagamento() {
+      this.isPaymentMethodModalOpen = false;
+      this.despesaSelecionada = null;
+      this.metodoSelecionado = "";
+    },
+
+    async confirmarPagamento() {
+      if (!this.despesaSelecionada) return;
+
+      this.isLoading = true;
+      this.loadingMessage = "Salvando pagamento...";
+      try {
+        await atualizarStatusDespesa(this.despesaSelecionada.id, true);
+        await atualizarMetodoPagamento(
+          this.despesaSelecionada.id,
+          this.metodoSelecionado,
+        );
+        this.despesaSelecionada.pago = true;
+        this.despesaSelecionada.metodo_pagamento = this.metodoSelecionado;
+      } catch (error) {
+        console.error("Erro ao salvar pagamento:", error);
+        const msg = error.message.includes("fetch")
+          ? "Erro de conexão/CORS: Verifique as políticas RLS no Supabase e se o AdBlock está ativo."
+          : error.message;
+        alert("Não foi possível salvar o pagamento: " + msg);
+      } finally {
+        this.isLoading = false;
+        this.cancelarPagamento();
+      }
+    },
+
+    solicitarExclusao(id, descricao) {
+      this.despesaParaExcluir = id;
+      this.despesaParaExcluirDescricao = descricao || "esta despesa";
+      this.isDeleteModalOpen = true;
+    },
+
+    cancelarExclusao() {
+      this.isDeleteModalOpen = false;
+      this.despesaParaExcluir = null;
+      this.despesaParaExcluirDescricao = "";
+    },
+
+    async confirmarExclusao() {
+      if (!this.despesaParaExcluir) return;
 
       this.isLoading = true;
       try {
-        await excluirDespesa(id);
-        // Remove da lista local apenas após confirmar a exclusão no banco
-        this.despesas = this.despesas.filter((d) => d.id !== id);
+        await excluirDespesa(this.despesaParaExcluir);
+        this.despesas = this.despesas.filter(
+          (d) => d.id !== this.despesaParaExcluir,
+        );
       } catch (error) {
         alert("Erro ao excluir a despesa do banco de dados.");
       } finally {
         this.isLoading = false;
+        this.cancelarExclusao();
       }
     },
 
@@ -716,6 +1000,7 @@ export default {
           cod_barras: "",
           valor: 0,
           pago: false,
+          metodo_pagamento: "",
         };
       } catch (error) {
         console.error("Erro ao salvar a despesa:", error);

@@ -168,9 +168,17 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr
-              v-for="item in despesas"
+              v-for="(item, index) in despesas"
               :key="item.id"
               class="hover:bg-gray-50/50 transition-colors group"
+              draggable="true"
+              @dragstart="onDragStart(index, $event)"
+              @dragover="onDragOver(index, $event)"
+              @drop="onDrop(index, $event)"
+              @dragend="onDragEnd"
+              :class="{
+                'bg-slate-100': index === dragOverIndex,
+              }"
             >
               <td class="py-4 px-6">
                 <div class="flex items-center gap-3 text-gray-400">
@@ -491,6 +499,7 @@ import {
   criarDespesa,
   atualizarStatusDespesa,
   atualizarValorFixoMes,
+  atualizarOrdensDespesas,
 } from "../services/FinanceiroService.js";
 
 export default {
@@ -505,6 +514,9 @@ export default {
       mesAtivo: null,
       novoValorFixo: null,
       meses: [],
+      despesas: [],
+      dragSourceIndex: null,
+      dragOverIndex: null,
       novaDespesa: {
         mes_id: null,
         ordem: null,
@@ -516,7 +528,6 @@ export default {
         valor: 0,
         pago: false,
       },
-      despesas: [],
     };
   },
 
@@ -579,6 +590,67 @@ export default {
         pago: false,
       };
       this.isModalOpen = true;
+    },
+
+    onDragStart(index, event) {
+      this.dragSourceIndex = index;
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", index.toString());
+      }
+    },
+
+    onDragOver(index, event) {
+      event.preventDefault();
+      this.dragOverIndex = index;
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    },
+
+    async onDrop(targetIndex, event) {
+      event.preventDefault();
+      if (this.dragSourceIndex === null || this.dragSourceIndex === undefined) {
+        return;
+      }
+
+      const fromIndex = this.dragSourceIndex;
+      const toIndex = targetIndex;
+      this.dragSourceIndex = null;
+      this.dragOverIndex = null;
+
+      if (fromIndex === toIndex) {
+        return;
+      }
+
+      const originalDespesas = JSON.parse(JSON.stringify(this.despesas));
+      this.reorderDespesas(fromIndex, toIndex);
+
+      try {
+        await atualizarOrdensDespesas(this.despesas);
+      } catch (error) {
+        console.error("Erro ao salvar nova ordem das despesas:", error);
+        this.despesas = originalDespesas;
+        alert(
+          "Erro ao atualizar a ordem das despesas: " +
+            (error.message || error).toString(),
+        );
+      }
+    },
+
+    onDragEnd() {
+      this.dragSourceIndex = null;
+      this.dragOverIndex = null;
+    },
+
+    reorderDespesas(fromIndex, toIndex) {
+      const updated = [...this.despesas];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      updated.forEach((item, index) => {
+        item.ordem = index + 1;
+      });
+      this.despesas = updated;
     },
 
     openEditTotal() {

@@ -104,6 +104,48 @@ export async function atualizarStatusDespesa(id, pago) {
     }
 }
 
+export async function atualizarOrdensDespesas(despesas) {
+    if (!Array.isArray(despesas) || despesas.length === 0) {
+        return [];
+    }
+
+    const validRows = despesas
+        .filter((item) => item && item.id !== null && item.id !== undefined)
+        .map((item) => ({
+            id: item.id,
+            ordem: item.ordem,
+        }));
+
+    if (validRows.length === 0) {
+        throw new Error("Nenhuma despesa válida para atualizar a ordem.");
+    }
+
+    const results = [];
+    for (const row of validRows) {
+        const { data, error } = await supabase
+            .from("despesas")
+            .update({ ordem: row.ordem })
+            .eq("id", row.id)
+            .select("id, ordem");
+
+        if (error) {
+            console.error("Service: Erro ao atualizar ordem da despesa:", row, error);
+            throw new Error(error.message || "Erro ao atualizar ordens das despesas.");
+        }
+
+        if (!data || data.length === 0) {
+            console.error("Service: Nenhuma despesa atualizada para o row:", row);
+            throw new Error(
+                "Nenhuma despesa atualizada. Verifique os IDs das despesas e as permissões no Supabase.",
+            );
+        }
+
+        results.push(data[0]);
+    }
+
+    return results;
+}
+
 function normalizeMesId(mesId) {
     if (mesId === null || mesId === undefined) return mesId;
     if (typeof mesId === "string" && /^[0-9]+$/.test(mesId)) {

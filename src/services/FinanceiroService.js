@@ -104,19 +104,66 @@ export async function atualizarStatusDespesa(id, pago) {
     }
 }
 
-export async function atualizarValorFixoMes(mesId, valorFixo) {
-    console.log("Service: Atualizando valor fixo do mes", mesId, "para:", valorFixo);
+function normalizeMesId(mesId) {
+    if (mesId === null || mesId === undefined) return mesId;
+    if (typeof mesId === "string" && /^[0-9]+$/.test(mesId)) {
+        return Number(mesId);
+    }
+    return mesId;
+}
+
+export async function atualizarValorFixoMes(mesId, valorFixo, fallback) {
+    const normalizedId = normalizeMesId(mesId);
+    if (normalizedId === null || normalizedId === undefined) {
+        throw new Error("ID do mês é obrigatório para atualizar o valor fixo.");
+    }
+
+    console.log("Service: Atualizando valor fixo do mes", normalizedId, "para:", valorFixo);
 
     const { data, error } = await supabase
         .from("meses")
         .update({ valor_fixo: valorFixo })
-        .eq("id", mesId)
-        .select();
+        .eq("id", normalizedId)
+        .select("id, valor_fixo");
 
     if (error) {
         console.error("Service: Erro ao atualizar valor fixo do mes:", error);
-        throw error;
+        throw new Error(error.message || "Erro no Supabase ao atualizar o valor fixo do mês.");
     }
 
-    return data && data.length > 0 ? data[0] : null;
+    if (data && data.length > 0) {
+        return data[0];
+    }
+
+    if (fallback && fallback.nome && fallback.ano) {
+        console.warn(
+            "Service: Nenhum registro atualizado por ID, tentando fallback por nome/ano.",
+            { mesId: normalizedId, fallback },
+        );
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from("meses")
+            .update({ valor_fixo: valorFixo })
+            .match({ nome: fallback.nome, ano: fallback.ano })
+            .select("id, valor_fixo");
+
+        if (fallbackError) {
+            console.error("Service: Erro no fallback por nome/ano:", fallbackError);
+            throw new Error(
+                fallbackError.message ||
+                "Erro no Supabase ao atualizar o valor fixo do mês (fallback).",
+            );
+        }
+
+        if (fallbackData && fallbackData.length > 0) {
+            return fallbackData[0];
+        }
+    }
+
+    console.error(
+        "Service: Atualização concluída, mas nenhum registro foi retornado.",
+        { mesId: normalizedId, valorFixo, data, fallback },
+    );
+    throw new Error(
+        "Nenhum registro foi atualizado. Verifique o ID do mês e as permissões no Supabase.",
+    );
 }

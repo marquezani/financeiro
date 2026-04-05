@@ -427,7 +427,8 @@
         <div class="p-6">
           <p class="text-[14px] text-slate-600 mb-1 leading-relaxed">
             Defina um valor fixo para o mês de
-            <strong class="text-slate-800 font-bold">{{ mesAtivoNome }}</strong>.
+            <strong class="text-slate-800 font-bold">{{ mesAtivoNome }}</strong
+            >.
           </p>
           <p class="text-[14px] text-slate-500 mb-6">
             Remova para calcular o total automaticamente.
@@ -573,18 +574,57 @@ export default {
     async salvarValorFixo() {
       this.isLoading = true;
       try {
-        const valorFixoTratado = this.novoValorFixo !== null && this.novoValorFixo !== "" ? Number(this.novoValorFixo) : null;
-        await atualizarValorFixoMes(this.mesAtivo, valorFixoTratado);
-        
-        // Atualiza a lista local de meses para refletir o novo valor
-        const mesIndex = this.meses.findIndex(m => m.id === this.mesAtivo);
-        if (mesIndex !== -1) {
-          this.meses[mesIndex].valor_fixo = valorFixoTratado;
+        if (!this.mesAtivo) {
+          throw new Error("Nenhum mês ativo selecionado para atualizar.");
         }
 
+        const valorInput = String(this.novoValorFixo || "")
+          .trim()
+          .replace(",", ".");
+        const valorFixoTratado = valorInput !== "" ? Number(valorInput) : null;
+
+        if (valorInput !== "" && Number.isNaN(valorFixoTratado)) {
+          throw new Error("Valor fixo inválido. Use apenas números.");
+        }
+
+        const mesAtual = this.meses.find((m) => m.id === this.mesAtivo);
+
+        console.log("Componente: salvarValorFixo", {
+          mesAtivo: this.mesAtivo,
+          valorFixoTratado,
+          mesAtual,
+        });
+
+        const mesAtualizado = await atualizarValorFixoMes(
+          this.mesAtivo,
+          valorFixoTratado,
+          {
+            nome: mesAtual?.nome,
+            ano: mesAtual?.ano,
+          },
+        );
+
+        if (!mesAtualizado) {
+          throw new Error(
+            "Não foi possível obter o mês atualizado do banco de dados.",
+          );
+        }
+
+        const mesIndex = this.meses.findIndex((m) => m.id === this.mesAtivo);
+        if (mesIndex !== -1) {
+          this.meses[mesIndex].valor_fixo = mesAtualizado.valor_fixo;
+        }
+
+        await this.carregarMeses();
+
+        this.novoValorFixo = mesAtualizado.valor_fixo;
         this.isEditTotalModalOpen = false;
       } catch (error) {
-        alert("Erro ao atualizar o valor fixo do mês.");
+        console.error("Erro ao salvar valor fixo:", error);
+        alert(
+          "Erro ao atualizar o valor fixo do mês: " +
+            (error.message || error).toString(),
+        );
       } finally {
         this.isLoading = false;
       }

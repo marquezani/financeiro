@@ -126,6 +126,27 @@ export async function atualizarMetodoPagamento(id, metodo) {
     }
 }
 
+export async function atualizarPagamentoDespesa(id, dados) {
+    if (!id) throw new Error("ID da despesa é obrigatório para atualização.");
+
+    const { data, error } = await supabase
+        .from("despesas")
+        .update(dados)
+        .eq("id", id)
+        .select();
+
+    if (error) {
+        console.error("Service: Erro ao atualizar pagamento da despesa:", error.message, error.details);
+        throw error;
+    }
+
+    if (!data || data.length === 0) {
+        throw new Error("Nenhum registro foi atualizado para o pagamento da despesa.");
+    }
+
+    return data[0];
+}
+
 export async function atualizarOrdensDespesas(despesas) {
     if (!Array.isArray(despesas) || despesas.length === 0) {
         return [];

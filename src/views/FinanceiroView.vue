@@ -28,7 +28,7 @@
             clip-rule="evenodd"
           />
         </svg>
-        Nova Despesa
+        Novo Aluno
       </button>
     </header>
 
@@ -122,14 +122,28 @@
     <div
       class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
     >
-      <div class="overflow-x-auto">
+      <div
+        v-if="despesas.length === 0"
+        class="flex flex-col items-center justify-center py-16 px-6"
+      >
+        <div class="mb-4">
+          <i class="ph-bold ph-student text-6xl text-gray-300"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-600 mb-2">
+          Nenhum aluno cadastrado
+        </h3>
+        <p class="text-sm text-gray-400">
+          Adicione um novo aluno para começar a gerenciar os pagamentos.
+        </p>
+      </div>
+      <div v-else class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
             <tr
               class="bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider"
             >
               <th class="py-4 px-6 w-24">Ordem</th>
-              <th class="py-4 px-6">Descrição (Pagar)</th>
+              <th class="py-4 px-6">Nome do aluno</th>
               <th class="py-4 px-6">Dia</th>
               <th class="py-4 px-6 text-center">Pagamento</th>
               <th class="py-4 px-6 text-center">Observações</th>
@@ -182,22 +196,23 @@
                   </span>
                 </div>
               </td>
-              <td class="py-4 px-6 text-center text-gray-400">
-                <div class="space-y-1">
+              <td class="py-4 px-6 text-left text-gray-400">
+                <div class="flex flex-col items-start gap-1">
                   <div
                     v-if="item.metodo_pagamento"
-                    class="font-semibold text-slate-700"
+                    class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-800"
                   >
-                    <div
-                      v-if="item.metodo_pagamento"
-                      class="text-[11px] font-semibold text-indigo-600"
-                    >
-                      {{ item.metodo_pagamento }}
-                    </div>
+                    <i
+                      :class="[
+                        obterIconeMetodoPagamento(item.metodo_pagamento),
+                        'text-base',
+                      ]"
+                    ></i>
+                    <span>{{ item.metodo_pagamento }}</span>
                   </div>
                   <div
                     v-if="item.data_pagamento"
-                    class="text-[11px] text-slate-500"
+                    class="text-[11px] text-slate-500 text-left pl-9"
                   >
                     {{ formatarData(item.data_pagamento) }}
                   </div>
@@ -270,9 +285,7 @@
         >
           <div class="flex items-center gap-2">
             <i class="ph-bold ph-plus-circle text-[#6366f1] text-xl"></i>
-            <h3 class="text-base font-bold text-[#0f172a]">
-              Adicionar Pagamento
-            </h3>
+            <h3 class="text-base font-bold text-[#0f172a]">Adicionar Aluno</h3>
           </div>
           <button
             @click="isModalOpen = false"
@@ -330,12 +343,12 @@
           <div>
             <label
               class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
-              >Descrição do Pagamento</label
+              >Nome do aluno</label
             >
             <input
               v-model="novaDespesa.descricao"
               type="text"
-              placeholder="Ex: Condomínio"
+              placeholder="Ex: João Silva"
               class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
             />
           </div>
@@ -424,7 +437,7 @@
             @click="salvarDespesa"
             class="px-5 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm"
           >
-            Salvar Despesa
+            Salvar Aluno
           </button>
         </div>
       </div>
@@ -506,7 +519,18 @@
           </button>
         </div>
 
-        <div class="p-6 space-y-3">
+        <div class="p-6 space-y-4">
+          <div>
+            <label
+              class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
+              >Data do Pagamento</label
+            >
+            <input
+              v-model="dataPagamento"
+              type="date"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+            />
+          </div>
           <label
             class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
             :class="
@@ -605,6 +629,7 @@ export default {
       despesaParaExcluirDescricao: "",
       despesaSelecionada: null,
       metodoSelecionado: "",
+      dataPagamento: "",
       mesAtivo: null,
       meses: [],
       despesas: [],
@@ -874,6 +899,12 @@ export default {
         // Se não está pago, abrir modal para escolher método
         this.despesaSelecionada = item;
         this.metodoSelecionado = "";
+        // Setar a data de hoje no formato YYYY-MM-DD
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+        const dia = String(hoje.getDate()).padStart(2, "0");
+        this.dataPagamento = `${ano}-${mes}-${dia}`;
         this.isPaymentMethodModalOpen = true;
       }
     },
@@ -882,6 +913,20 @@ export default {
       this.isPaymentMethodModalOpen = false;
       this.despesaSelecionada = null;
       this.metodoSelecionado = "";
+      this.dataPagamento = "";
+    },
+
+    obterIconeMetodoPagamento(metodo) {
+      switch (metodo) {
+        case "Pix":
+          return "ph-bold ph-currency-circle-dollar";
+        case "Dinheiro":
+          return "ph ph-money";
+        case "Depósito":
+          return "ph ph-piggy-bank";
+        default:
+          return "ph-bold ph-credit-card";
+      }
     },
 
     async confirmarPagamento() {
@@ -890,14 +935,18 @@ export default {
       this.isLoading = true;
       this.loadingMessage = "Salvando pagamento...";
       try {
+        // Converter data para ISO string
+        const dataSelecionada = new Date(
+          `${this.dataPagamento}T00:00:00`,
+        ).toISOString();
         await atualizarPagamentoDespesa(this.despesaSelecionada.id, {
           pago: true,
           metodo_pagamento: this.metodoSelecionado,
-          data_pagamento: new Date().toISOString(),
+          data_pagamento: dataSelecionada,
         });
         this.despesaSelecionada.pago = true;
         this.despesaSelecionada.metodo_pagamento = this.metodoSelecionado;
-        this.despesaSelecionada.data_pagamento = new Date().toISOString();
+        this.despesaSelecionada.data_pagamento = dataSelecionada;
       } catch (error) {
         console.error("Erro ao salvar pagamento:", error);
         const msg = error.message.includes("fetch")
@@ -932,7 +981,7 @@ export default {
           (d) => d.id !== this.despesaParaExcluir,
         );
       } catch (error) {
-        alert("Erro ao excluir a despesa do banco de dados.");
+        alert("Erro ao excluir o aluno do banco de dados.");
       } finally {
         this.isLoading = false;
         this.cancelarExclusao();
@@ -948,7 +997,7 @@ export default {
         }
 
         if (!this.novaDespesa.descricao || !this.novaDespesa.descricao.trim()) {
-          throw new Error("A descrição da despesa é obrigatória.");
+          throw new Error("O nome do aluno é obrigatório.");
         }
 
         if (
@@ -957,7 +1006,7 @@ export default {
           this.novaDespesa.dia === "" ||
           Number.isNaN(Number(this.novaDespesa.dia))
         ) {
-          throw new Error("O dia de vencimento é obrigatório.");
+          throw new Error("O dia do vencimento do pagamento é obrigatório.");
         }
 
         const diaNumero = Number(this.novaDespesa.dia);
@@ -1034,9 +1083,9 @@ export default {
           metodo_pagamento: "",
         };
       } catch (error) {
-        console.error("Erro ao salvar a despesa:", error);
+        console.error("Erro ao salvar o aluno:", error);
         alert(
-          "Erro ao salvar a despesa no banco de dados: " +
+          "Erro ao salvar o aluno no banco de dados: " +
             (error.message || error).toString(),
         );
       } finally {

@@ -44,7 +44,9 @@
               <i class="ph-bold ph-pencil-simple text-sm"></i>
             </button>
           </div>
-          <h2 class="text-2xl font-bold text-gray-900">formatCurrency</h2>
+          <h2 class="text-2xl font-bold text-gray-900">
+            {{ formatarMoeda(totalMes) }}
+          </h2>
         </div>
         <div
           class="h-12 w-12 rounded-full bg-gray-50 flex items-center justify-center"
@@ -361,25 +363,113 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="isEditTotalModalOpen"
+      class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-[420px] flex flex-col"
+        @click.stop
+      >
+        <div
+          class="px-6 py-5 flex items-center justify-between border-b border-slate-50"
+        >
+          <div class="flex items-center gap-2">
+            <i class="ph-bold ph-wallet text-[#6366f1] text-xl"></i>
+            <h3 class="text-base font-bold text-[#0f172a]">
+              Editar Total do Mês
+            </h3>
+          </div>
+          <button
+            @click="isEditTotalModalOpen = false"
+            class="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="p-6">
+          <p class="text-[14px] text-slate-600 mb-1 leading-relaxed">
+            Defina um valor fixo para o mês de
+            <strong class="text-slate-800 font-bold">Abril - 2026</strong>.
+          </p>
+          <p class="text-[14px] text-slate-500 mb-6">
+            Remova para calcular o total automaticamente.
+          </p>
+
+          <div>
+            <label
+              class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5"
+            >
+              Valor Fixo (R$)
+            </label>
+            <div class="relative flex items-center">
+              <span class="absolute left-3 text-slate-400 text-sm font-medium"
+                >R$</span
+              >
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0,00"
+                class="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 flex items-center justify-between pb-6">
+          <button
+            class="text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors"
+          >
+            Remover Fixo
+          </button>
+
+          <div class="flex items-center gap-3">
+            <button
+              @click="isEditTotalModalOpen = false"
+              class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              class="px-6 py-2.5 text-sm font-semibold text-white bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg transition-colors shadow-sm"
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from "vue";
 
+// Controle do Modal Novo Pagamento
 const isModalOpen = ref(false);
 
+// Controle do Modal Editar Total
+const isEditTotalModalOpen = ref(false);
+
 const openEditTotal = () => {
-  console.log("Abrir edição do total");
+  isEditTotalModalOpen.value = true;
 };
 
+// Controle de Navegação de Meses
 const mesAtivo = ref("abril-2026");
+const tabsContainer = ref(null);
 
-const totalPending = computed(() => {
-  return despesas.value
-    .filter((item) => !item.pago)
-    .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
-});
+const scrollTabs = (direction) => {
+  if (tabsContainer.value) {
+    const scrollAmount = 250;
+    tabsContainer.value.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  }
+};
 
 const meses = ref([
   { id: "setembro-2025", nome: "Setembro", ano: "2025" },
@@ -449,6 +539,19 @@ const despesas = ref([
   },
 ]);
 
+// Cálculo do Total do Mês (soma de todas as despesas)
+const totalMes = computed(() => {
+  return despesas.value.reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+});
+
+// Cálculo do Valor Pendente (apenas o que ainda não foi pago)
+const totalPending = computed(() => {
+  return despesas.value
+    .filter((item) => !item.pago)
+    .reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+});
+
+// Função utilitária para formatar o valor monetário
 const formatarMoeda = (valor) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",

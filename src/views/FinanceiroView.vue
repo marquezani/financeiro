@@ -294,9 +294,8 @@
                 >Ordem</label
               >
               <input
-                v-model="novaDespesa.ordem"
+                v-model.number="novaDespesa.ordem"
                 type="number"
-                value="10"
                 class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
               />
             </div>
@@ -561,7 +560,24 @@ export default {
   // 3. METHODS: Substitui as funções const = () => {}.
   methods: {
     abrirModalNovaDespesa() {
-      this.novaDespesa.mes_id = this.mesAtivo;
+      const ordensExistentes = this.despesas.map(
+        (item) => Number(item.ordem) || 0,
+      );
+      const proximaOrdem = ordensExistentes.length
+        ? Math.max(...ordensExistentes) + 1
+        : 1;
+
+      this.novaDespesa = {
+        mes_id: this.mesAtivo,
+        ordem: proximaOrdem,
+        descricao: "",
+        dia: null,
+        observacoes: "",
+        parcelas: "",
+        cod_barras: "",
+        valor: 0,
+        pago: false,
+      };
       this.isModalOpen = true;
     },
 
